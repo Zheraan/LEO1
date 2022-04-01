@@ -13,7 +13,8 @@
 #define MQTT_SERVERPORT  1883 
 #define MQTT_USERNAME    "Dragomin"
 #define MQTT_KEY         "Nerd"
-#define MQTT_TOPIC       "/count"
+#define MQTT_TOPIC_COUNT  "/count"
+#define MQTT_TOPIC_VOLT  "/voltage"
 
 // wifi
 #include <ESP8266WiFiMulti.h>
@@ -27,12 +28,18 @@ const uint32_t conn_tout_ms = 5000;
 volatile unsigned long count_prev_time;
 volatile unsigned long count;
 
+//voltage
+#define ADC_PIN A0
+volatile unsigned long volt_prev_time;
+volatile unsigned long volt;
+
 // mqtt
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 WiFiClient wifi_client;
 Adafruit_MQTT_Client mqtt(&wifi_client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
-Adafruit_MQTT_Publish count_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC);
+Adafruit_MQTT_Publish count_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_COUNT);
+Adafruit_MQTT_Publish volt_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_VOLT);
 
 // publish
 #define PUBLISH_INTERVAL 5000
@@ -77,6 +84,11 @@ void mqtt_connect()
   }
 }
 
+void measure_voltage(){
+  volt = analogRead(ADC_PIN);
+  return;
+}
+
 void print_wifi_status()
 {
   Serial.print (millis());
@@ -118,12 +130,20 @@ void setup()
 
 void publish_data()
 {
-  char payload[10];
-  sprintf (payload, "%ld", count);
-  count = 0;
+  char payload_count[10];
+  sprintf (payload_count, "%ld", count);
+  char payload_volt[10];
+  sprintf (payload_volt, "%ld", volt);
+  
   Serial.print(millis());
   Serial.print(" Publishing: ");
-  Serial.println(payload);
+  char buf[25];
+  sprintf (buf, "Count: %ld", count);
+  Serial.print(buf);
+  sprintf (buf, "   Volt: %ld", volt);
+  Serial.println(buf);
+  volt = 0;
+  count = 0;
 
   Serial.print(millis());
   Serial.println(" Connecting...");
@@ -132,9 +152,17 @@ void publish_data()
     print_wifi_status();
   
     mqtt_connect();
-    if (! count_mqtt_publish.publish(payload))
+    if (! count_mqtt_publish.publish(payload_count))
     {
-      debug("MQTT failed");
+      debug("MQTT count send failed");
+    }
+    else
+    {
+      debug("MQTT ok");
+    }
+    if (! volt_mqtt_publish.publish(payload_volt))
+    {
+      debug("MQTT volt send failed");
     }
     else
     {
@@ -148,6 +176,7 @@ void loop()
     if (millis() - prev_post_time >= PUBLISH_INTERVAL)
     {
       prev_post_time = millis();
+      measure_voltage();
       publish_data();
     }
    
