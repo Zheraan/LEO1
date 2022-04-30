@@ -1,0 +1,11 @@
+#!/bin/bash
+
+export FLASK_ENV=development
+export FLASK_APP=api.py
+
+case "/home/pi/.local/bin" in
+*:$PATH:*) echo "flask install directory is in the path" ;;
+*) export PATH="/home/pi/.local/bin:$PATH" ;;
+esac
+
+flask run
