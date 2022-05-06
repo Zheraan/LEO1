@@ -41,11 +41,11 @@ Adafruit_MQTT_Publish moist_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USE
 
 // publish
 #define PUBLISH_INTERVAL 5000
-unsigned long prev_post_time;
+unsigned long prev_post_time = 0;
 
 // debug
 #define DEBUG_INTERVAL 2000
-unsigned long prev_debug_time;
+unsigned long prev_debug_time = 0;
 
 void MoistnTemp(){
   float tempC = ss.getTemp();
@@ -124,6 +124,13 @@ void setup()
   {
     debug("Unable to connect");
   }
+
+  if (!ss.begin(0x36)) {
+    Serial.println("ERROR! seesaw not found");
+  } else {
+    Serial.print("seesaw started! version: ");
+    Serial.println(ss.getVersion(), HEX);
+  }
 }
 
 void publish_data()
@@ -171,6 +178,7 @@ void loop()
 {
     if (millis() - prev_post_time >= PUBLISH_INTERVAL)
     {
+      debug("yeet");
       prev_post_time = millis();
       MoistnTemp();
       publish_data();
