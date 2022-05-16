@@ -1,5 +1,5 @@
 from influxdb import InfluxDBClient
-from flask import Flask, request, render_template
+from flask import Flask, request
 import paho.mqtt.client as mqtt
 
 MQTT_SERVER = "localhost"

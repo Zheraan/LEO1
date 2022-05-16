@@ -31,6 +31,7 @@ int CapVal = 0;
 int TC = 0;
 uint32_t timestamp_pump_turnOFF = 0;
 uint32_t timestamp_last_lookup = 0;
+uint8_t pump_active = false;
 
 // Motor Pin
 #define motor 12
@@ -61,12 +62,14 @@ void MoistnTemp()
   {
 
     digitalWrite(motor, HIGH);
+    pump_active = true;
   }
 
   if (CapVal > 400)
   {
 
     digitalWrite(motor, LOW);
+    pump_active = false;
   }
 }
 
@@ -187,11 +190,22 @@ void loop()
 {
   if (millis() - timestamp_last_lookup >= MQTT_LOOKUP)
   {
+    timestamp_last_lookup = millis();
     // Lookup mqtt topic
   }
 
-  if (timestamp_pump_turnOFF)
+  if (pump_active && timestamp_pump_turnOFF <= millis())
   {
+
+    digitalWrite(motor, LOW);
+    pump_active = false;
+  }
+
+  if (!pump_active && timestamp_pump_turnOFF > millis())
+  {
+
+    digitalWrite(motor, HIGH);
+    pump_active = true;
   }
 
   if (millis() - prev_post_time >= PUBLISH_INTERVAL)
