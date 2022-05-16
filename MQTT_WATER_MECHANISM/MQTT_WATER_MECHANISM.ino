@@ -42,6 +42,7 @@ WiFiClient wifi_client;
 Adafruit_MQTT_Client mqtt(&wifi_client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
 Adafruit_MQTT_Publish temp_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_TEMP);
 Adafruit_MQTT_Publish moist_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_MOIST);
+Adafruit_MQTT_Subscribe motor_subscribe = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME MQTT_TOPIC_MANUAL_PUMP);
 
 // publish
 #define PUBLISH_INTERVAL 5000
@@ -140,6 +141,8 @@ void setup()
     Serial.print("seesaw started! version: ");
     Serial.println(ss.getVersion(), HEX);
   }
+
+  mqtt.subscribe(&motor_subscribe);
 }
 
 void publish_data()
@@ -187,7 +190,11 @@ void loop()
 {
   if (millis() - timestamp_last_lookup >= MQTT_LOOKUP)
   {
-    // Lookup mqtt topic
+    Adafruit_MQTT_Subscribe *subscription;
+  while ((subscription = mqtt.readSubscription(3000))) {
+    if (subscription == &motor_subscribe) {
+      }
+    }
   }
 
   if (timestamp_pump_turnOFF)
