@@ -32,6 +32,7 @@ int TC = 0;
 uint32_t timestamp_pump_turnOFF = 0;
 uint32_t timestamp_last_lookup = 0;
 uint8_t pump_active = false;
+uint8_t override = false;
 
 // Motor Pin
 #define motor 12
@@ -67,7 +68,7 @@ void MoistnTemp()
     pump_active = true;
   }
 
-  if (CapVal > 400)
+  if (CapVal > 400 && override == false)
   {
 
     digitalWrite(motor, LOW);
@@ -200,8 +201,6 @@ void loop()
       if (subscription == &motor_subscribe)
       {
         timestamp_pump_turnOFF = millis() + atoi(motor_subscribe.lastread) * 1000;
-        digitalWrite(motor, HIGH);
-        pump_active = true;
       }
     }
   }
@@ -211,6 +210,14 @@ void loop()
 
     digitalWrite(motor, LOW);
     pump_active = false;
+    override = false;
+  }
+
+  if (!pump_active && timestamp_pump_turnOFF > millis())
+  {
+    digitalWrite(motor, HIGH);
+    pump_active = true;
+    override = true;
   }
 
   if (millis() - prev_post_time >= PUBLISH_INTERVAL)
