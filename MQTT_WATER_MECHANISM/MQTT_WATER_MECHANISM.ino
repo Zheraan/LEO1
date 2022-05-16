@@ -200,7 +200,7 @@ void loop()
     {
       if (subscription == &motor_subscribe)
       {
-        timestamp_pump_turnOFF = millis() + atoi(motor_subscribe.lastread) * 1000;
+        timestamp_pump_turnOFF = millis() + atoi((char *)&(motor_subscribe.lastread)) * 1000;
       }
     }
   }
