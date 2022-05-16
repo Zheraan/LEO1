@@ -44,6 +44,7 @@ Adafruit_MQTT_Client mqtt(&wifi_client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERN
 Adafruit_MQTT_Publish temp_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_TEMP);
 Adafruit_MQTT_Publish moist_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_MOIST);
 Adafruit_MQTT_Subscribe motor_subscribe = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME MQTT_TOPIC_MANUAL_PUMP);
+Adafruit_MQTT_Subscribe *subscription;
 
 // publish
 #define PUBLISH_INTERVAL 5000
@@ -194,11 +195,13 @@ void loop()
   if (millis() - timestamp_last_lookup >= MQTT_LOOKUP)
   {
     timestamp_last_lookup = millis();
-    Adafruit_MQTT_Subscribe *subscription;
     while ((subscription = mqtt.readSubscription(3000)))
     {
       if (subscription == &motor_subscribe)
       {
+        timestamp_pump_turnOFF = millis() + atoi(motor_subscribe.lastread) * 1000;
+        digitalWrite(motor, HIGH);
+        pump_active = true;
       }
     }
   }
@@ -208,13 +211,6 @@ void loop()
 
     digitalWrite(motor, LOW);
     pump_active = false;
-  }
-
-  if (!pump_active && timestamp_pump_turnOFF > millis())
-  {
-
-    digitalWrite(motor, HIGH);
-    pump_active = true;
   }
 
   if (millis() - prev_post_time >= PUBLISH_INTERVAL)
