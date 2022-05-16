@@ -6,15 +6,17 @@
 // 2022-03-24, Kjeld Jensen, First version
 
 // Configuration
-#define WIFI_SSID       "LEO1_TEAM_17"
-#define WIFI_PASSWORD    "LEO_TEAM_17!"
+#define WIFI_SSID "LEO1_TEAM_17"
+#define WIFI_PASSWORD "LEO_TEAM_17!"
 
-#define MQTT_SERVER      "192.168.10.1"
-#define MQTT_SERVERPORT  1883 
-#define MQTT_USERNAME    "Dragomin"
-#define MQTT_KEY         "Nerd"
-#define MQTT_TOPIC_TEMP  "/temp"
-#define MQTT_TOPIC_MOIST  "/moist"
+#define MQTT_SERVER "192.168.10.1"
+#define MQTT_SERVERPORT 1883
+#define MQTT_USERNAME "Dragomin"
+#define MQTT_KEY "Nerd"
+#define MQTT_TOPIC_TEMP "/temp"
+#define MQTT_TOPIC_MOIST "/moist"
+#define MQTT_TOPIC_MANUAL_PUMP "/pump/manual_activation"
+#define MQTT_LOOKUP 3000
 
 // wifi
 #include <ESP8266WiFiMulti.h>
@@ -27,6 +29,8 @@ const uint32_t conn_tout_ms = 5000;
 Adafruit_seesaw ss;
 int CapVal = 0;
 int TC = 0;
+uint32_t timestamp_pump_turnOFF = 0;
+uint32_t timestamp_last_lookup = 0;
 
 // Motor Pin
 #define motor 12
@@ -47,27 +51,29 @@ unsigned long prev_post_time = 0;
 #define DEBUG_INTERVAL 2000
 unsigned long prev_debug_time = 0;
 
-void MoistnTemp(){
+void MoistnTemp()
+{
   float tempC = ss.getTemp();
   uint16_t capread = ss.touchRead(0);
   CapVal = capread;
   TC = tempC;
-  if(CapVal < 400 ){
+  if (CapVal < 400)
+  {
 
     digitalWrite(motor, HIGH);
-   
   }
 
-  if(CapVal > 400){
+  if (CapVal > 400)
+  {
 
-    digitalWrite(motor,LOW);
+    digitalWrite(motor, LOW);
   }
 }
 
 void debug(const char *s)
 {
-  Serial.print (millis());
-  Serial.print (" ");
+  Serial.print(millis());
+  Serial.print(" ");
   Serial.println(s);
 }
 
@@ -76,15 +82,15 @@ void mqtt_connect()
   int8_t ret;
 
   // Stop if already connected.
-  if (! mqtt.connected())
+  if (!mqtt.connected())
   {
     debug("Connecting to MQTT... ");
     while ((ret = mqtt.connect()) != 0)
     { // connect will return 0 for connected
-         Serial.println(mqtt.connectErrorString(ret));
-         debug("Retrying MQTT connection in 5 seconds...");
-         mqtt.disconnect();
-         delay(5000);  // wait 5 seconds
+      Serial.println(mqtt.connectErrorString(ret));
+      debug("Retrying MQTT connection in 5 seconds...");
+      mqtt.disconnect();
+      delay(5000); // wait 5 seconds
     }
     debug("MQTT Connected");
   }
@@ -92,7 +98,7 @@ void mqtt_connect()
 
 void print_wifi_status()
 {
-  Serial.print (millis());
+  Serial.print(millis());
   Serial.print(" WiFi connected: ");
   Serial.print(WiFi.SSID());
   Serial.print(" ");
@@ -109,14 +115,14 @@ void setup()
   delay(10);
   debug("Boot");
 
-  //Motor definition
+  // Motor definition
   pinMode(motor, OUTPUT);
 
   // wifi
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
-  if(WiFiMulti.run(conn_tout_ms) == WL_CONNECTED)
+  if (WiFiMulti.run(conn_tout_ms) == WL_CONNECTED)
   {
     print_wifi_status();
   }
@@ -125,9 +131,12 @@ void setup()
     debug("Unable to connect");
   }
 
-  if (!ss.begin(0x36)) {
+  if (!ss.begin(0x36))
+  {
     Serial.println("ERROR! seesaw not found");
-  } else {
+  }
+  else
+  {
     Serial.print("seesaw started! version: ");
     Serial.println(ss.getVersion(), HEX);
   }
@@ -136,26 +145,26 @@ void setup()
 void publish_data()
 {
   char payload_temp[10];
-  sprintf (payload_temp, "%ld", TC);
+  sprintf(payload_temp, "%ld", TC);
   char payload_moist[10];
-  sprintf (payload_moist, "%ld", CapVal);
-  
+  sprintf(payload_moist, "%ld", CapVal);
+
   Serial.print(millis());
   Serial.print(" Publishing: ");
   char buf[25];
-  sprintf (buf, "Temperature: %ld", TC);
+  sprintf(buf, "Temperature: %ld", TC);
   Serial.print(buf);
-  sprintf (buf, "   Moisture: %ld", CapVal);
+  sprintf(buf, "   Moisture: %ld", CapVal);
   Serial.println(buf);
 
   Serial.print(millis());
   Serial.println(" Connecting...");
-  if((WiFiMulti.run(conn_tout_ms) == WL_CONNECTED))
+  if ((WiFiMulti.run(conn_tout_ms) == WL_CONNECTED))
   {
     print_wifi_status();
-  
+
     mqtt_connect();
-    if (! temp_mqtt_publish.publish(payload_temp))
+    if (!temp_mqtt_publish.publish(payload_temp))
     {
       debug("MQTT temperature send failed");
     }
@@ -163,7 +172,7 @@ void publish_data()
     {
       debug("MQTT ok");
     }
-    if (! moist_mqtt_publish.publish(payload_moist))
+    if (!moist_mqtt_publish.publish(payload_moist))
     {
       debug("MQTT moisture send failed");
     }
@@ -176,19 +185,28 @@ void publish_data()
 
 void loop()
 {
-    if (millis() - prev_post_time >= PUBLISH_INTERVAL)
-    {
-      debug("yeet");
-      prev_post_time = millis();
-      MoistnTemp();
-      publish_data();
-    }
-   
-    if (millis() - prev_debug_time >= DEBUG_INTERVAL)
-    {
-      prev_debug_time = millis();
-      Serial.print(millis());
-      Serial.print(" ");
-      Serial.println(TC);
-    }
+  if (millis() - timestamp_last_lookup >= MQTT_LOOKUP)
+  {
+    // Lookup mqtt topic
+  }
+
+  if (timestamp_pump_turnOFF)
+  {
+  }
+
+  if (millis() - prev_post_time >= PUBLISH_INTERVAL)
+  {
+    debug("yeet");
+    prev_post_time = millis();
+    MoistnTemp();
+    publish_data();
+  }
+
+  if (millis() - prev_debug_time >= DEBUG_INTERVAL)
+  {
+    prev_debug_time = millis();
+    Serial.print(millis());
+    Serial.print(" ");
+    Serial.println(TC);
+  }
 }
