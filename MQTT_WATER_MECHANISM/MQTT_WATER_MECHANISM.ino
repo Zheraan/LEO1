@@ -3,7 +3,7 @@
 // Linux for Embedded Objects 1
 // University of Southern Denmark
 
-// 2022-03-24, Kjeld Jensen, First version
+// 2022-05, LEO1 Team 17
 
 // Configuration
 #define WIFI_SSID "LEO1_TEAM_17"

@@ -1,6 +1,14 @@
+
+
+# Linux for Embedded Objects 1
+# University of Southern Denmark
+
+# 2022-05, LEO1 Team 17
+
 from influxdb import InfluxDBClient
 from flask import Flask, request
 import paho.mqtt.client as mqtt
+import re
 
 MQTT_SERVER = "localhost"
 MQTT_SERVERPORT = 1883
@@ -26,8 +34,11 @@ def show_user(db=None, table=None):
     query_result = ""
     # returns all the data contained in the <db> database
     try:
+        if (re.search("^[a-zA-Z0-9_-]+$", db) == None):
+            return "Error: invalid database name\n"
         influxclient.switch_database(db)
-        # TODO sanitize parameters here
+        if (re.search("^[a-zA-Z0-9_-]+$", db) == None):
+            return "Error: invalid table name\n"
         query_result = influxclient.query('SELECT * FROM ' + table).raw
     except:
         return "Error: something went wrong, go figure why\n"
